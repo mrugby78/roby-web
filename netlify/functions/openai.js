@@ -1,45 +1,44 @@
 // netlify/functions/openai.js
-
 const fetch = require('node-fetch');
 
-exports.handler = async function(event, context) {
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-  if (!OPENAI_API_KEY) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Missing OPENAI_API_KEY env var' })
-    };
-  }
-
-  let body;
+exports.handler = async (event, context) => {
   try {
-    body = JSON.parse(event.body);
-  } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Invalid JSON in request body' })
-    };
-  }
+    const body = JSON.parse(event.body || '{}');
+    const userMessage = body.userMessage;
+    if (!userMessage) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'No userMessage provided' }) };
+    }
 
-  try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',      // ← **Ajout du modèle**
+        messages: [
+          { role: 'system', content: 'Tu es Roby, un robot ami des enfants.' },
+          { role: 'user',   content: userMessage }
+        ]
+      })
     });
 
-    const data = await resp.json();
+    const data = await res.json();
+    if (!res.ok) {
+      return { statusCode: res.status, body: JSON.stringify(data) };
+    }
+
+    const reply = data.choices[0].message.content.trim();
     return {
-      statusCode: resp.status,
-      body: JSON.stringify(data)
+      statusCode: 200,
+      body: JSON.stringify({ reply })
     };
+
   } catch (err) {
     return {
-      statusCode: 502,
-      body: JSON.stringify({ error: 'OpenAI request failed', details: err.message })
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message })
     };
   }
 };
