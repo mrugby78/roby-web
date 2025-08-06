@@ -1,7 +1,7 @@
 // script.js
 
 // PLACEHOLDER_KEY sera remplacé automatiquement par GitHub Actions plus tard
-const OPENAI_API_KEY = 'PLACEHOLDER_KEY';
+const OPENAI_API_KEY = '__PLACEHOLDER_KEY__';
 
 const statusEl = document.getElementById('status');
 
