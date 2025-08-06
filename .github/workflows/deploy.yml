@@ -12,25 +12,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Récupérer le code
+      # 1) Récupère le code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2) Injecter la vraie clé OpenAI dans script.js
+      # 2) Injecte la vraie clé OpenAI dans script.js
       - name: Inject OpenAI key
         run: |
-          sed -i "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|g" script.js
+          sed -i "s|PLACEHOLDER_KEY|${{ secrets.OPENAI_API_KEY }}|g" script.js
 
-      # 3) Préparer GitHub Pages
-      - name: Deploy to GitHub Pages
+      # 3) Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v4
 
-      # 4) Uploader tes fichiers statiques (index.html, script.js, etc.)
+      # 4) Uploade tes fichiers statiques
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v2
         with:
           path: ./
 
-      # 5) Publier sur la branche gh-pages
+      # 5) Publie sur GitHub Pages (version 2 pour éviter l’ancien upload-artifact v3)
       - name: Publish Pages
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v2
