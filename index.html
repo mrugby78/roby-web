@@ -5,15 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>🤖 Roby, le Robot Curieux</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; }
-    #status { margin-top: 1rem; font-size: 1.2rem; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: #f0f8ff;
+    }
+    #status {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: gray;
+    }
   </style>
 </head>
 <body>
   <h1>🤖 Roby, le Robot Curieux</h1>
-  <p id="status">🔈 Initialisation du microphone…</p>
-
-  <!-- C’est tout pour le HTML -->
+  <p id="status">🔄 Initialisation du micro…</p>
+  <!-- zone où on injectera le script de reconnaissance & TTS -->
   <script src="script.js"></script>
 </body>
 </html>
