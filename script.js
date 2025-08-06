@@ -1,79 +1,68 @@
 // script.js
 
-// la clé sera injectée automatiquement via GitHub Secrets
-const OPENAI_API_KEY = "__OPENAI_API_KEY__";
+// PLACEHOLDER_KEY sera remplacé automatiquement par GitHub Actions plus tard
+const OPENAI_API_KEY = 'PLACEHOLDER_KEY';
 
-// référence à l’élément de statut
-const statusEl = document.getElementById("status");
+const statusEl = document.getElementById('status');
 
-// initialisation de la reconnaissance vocale
-const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognizer = new Recognition();
-recognizer.lang = "fr-FR";
-recognizer.interimResults = false;
-recognizer.continuous = true;
+// Initialisation du SpeechRecognition
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.lang = 'fr-FR';
+recognition.interimResults = false;
+recognition.continuous = false;
 
-// quand l’écoute démarre
-recognizer.onstart = () => {
-  statusEl.textContent = "🟢 Roby écoute…";
+// Initialisation du Text-to-Speech
+const synth = window.speechSynthesis;
+
+// Quand la reconnaissance démarre
+recognition.onstart = () => {
+  statusEl.textContent = '🎙️ J’écoute…';
 };
 
-// quand une phrase est transcrite
-recognizer.onresult = async (event) => {
-  const last = event.results.length - 1;
-  const transcript = event.results[last][0].transcript.trim();
+// À la fin de la reconnaissance
+recognition.onend = () => {
+  statusEl.textContent = '🤖 Roby parle…';
+};
 
-  statusEl.textContent = `🗣️ Vous : “${transcript}”\n🤔 Roby réfléchit…`;
-
-  recognizer.stop();
-
-  // appel à l’API OpenAI
-  let reply = "Désolé, je n’ai pas compris.";
+// Quand on obtient le texte reconnu
+recognition.onresult = async (event) => {
+  const userText = event.results[0][0].transcript;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+    // Appel à OpenAI
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: 'gpt-3.5-turbo',
         messages: [
-          {
-            role: "system",
-            content: `Roby est un compagnon vocal qui aime expliquer des choses simples et amusantes, raconter des histoires et partager sa curiosité avec les explorateurs de tous âges.
-Tu es Roby, un assistant vocal intelligent, drôle et bienveillant, conçu pour accompagner des enfants de 5 à 9 ans dans leur découverte du monde.
-• Phrases courtes et simples.
-• Réponses brèves.
-• Ton chaleureux et doux.
-• Jamais de longs discours ou de sujets inappropriés.`
-          },
-          { role: "user", content: transcript }
+          { role: 'system', content: `Tu es Roby, un robot ami des enfants.` },
+          { role: 'user', content: userText }
         ]
       })
     });
-    const json = await res.json();
-    reply = json.choices[0].message.content.trim();
-  } catch (e) {
-    console.error(e);
+    const data = await response.json();
+    const botReply = data.choices[0].message.content.trim();
+
+    // Parler la réponse
+    const utterance = new SpeechSynthesisUtterance(botReply);
+    utterance.lang = 'fr-FR';
+    utterance.onend = () => {
+      // Relancer la reconnaissance après le TTS
+      recognition.start();
+    };
+    synth.speak(utterance);
+
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = '❌ Erreur de communication.';
   }
-
-  // afficher et lire la réponse
-  statusEl.textContent = `🤖 Roby : “${reply}”`;
-  const utter = new SpeechSynthesisUtterance(reply);
-  utter.lang = "fr-FR";
-  utter.rate = 0.9;
-  utter.onend = () => {
-    statusEl.textContent = "🟢 Roby écoute…";
-    recognizer.start();
-  };
-  speechSynthesis.speak(utter);
 };
 
-// en cas d’erreur micro
-recognizer.onerror = (e) => {
-  statusEl.textContent = `❌ Erreur micro : ${e.error}`;
+// Lance la première écoute au chargement de la page
+window.onload = () => {
+  recognition.start();
 };
-
-// démarrer l’écoute immédiatement
-recognizer.start();
