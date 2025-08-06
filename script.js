@@ -1,57 +1,56 @@
-// script.js
+// ==== script.js ====
 
-// La clé sera injectée par ton hôte (Netlify) dans __OPENAI_API_KEY__
-const OPENAI_API_KEY = '__OPENAI_API_KEY__';
+// Au chargement de la page, on initialise l’API Web Speech
+const statusEl     = document.getElementById('status');
+const transcriptEl = document.getElementById('transcript');
 
-const statusEl   = document.getElementById('status');
-const resultEl   = document.getElementById('result');
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition        = new SpeechRecognition();
-recognition.lang         = 'fr-FR';
-recognition.interimResults = false;
-recognition.continuous    = false;
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recog     = new SpeechRec();
+recog.lang      = 'fr-FR';
+recog.interimResults = false;
+recog.continuous      = true;
 
 const synth = window.speechSynthesis;
 
-recognition.onstart = () => {
-  statusEl.textContent = '🟢 J’écoute…';
-};
-recognition.onend = () => {
-  statusEl.textContent = '🤖 Roby parle…';
+// Quand la reconnaissance démarre
+recog.onstart = () => {
+  statusEl.textContent = '🟢 Roby écoute…';
 };
 
-recognition.onresult = async (event) => {
-  const userText = event.results[0][0].transcript;
-  resultEl.textContent = `🟡 Tu as dit : « ${userText} »`;
+// À l’écoute d’un résultat
+recog.onresult = async (event) => {
+  const userText = event.results[0][0].transcript.trim();
+  transcriptEl.textContent = `🟡 Tu as dit : « ${userText} »`;
 
   try {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('/.netlify/functions/openai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'Tu es Roby, un robot ami des enfants.' },
-          { role: 'user', content: userText }
-        ]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: userText })
     });
-    const data = await resp.json();
+    const data = await response.json();
     const botReply = data.choices[0].message.content.trim();
 
+    // Lecture vocale de la réponse
     const utter = new SpeechSynthesisUtterance(botReply);
     utter.lang = 'fr-FR';
-    utter.onend = () => recognition.start();
+    utter.onend = () => recog.start();  // relance l’écoute
     synth.speak(utter);
-
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     statusEl.textContent = '❌ Erreur de communication.';
+    // on retente après 2s
+    setTimeout(() => recog.start(), 2000);
   }
 };
 
-window.onload = () => recognition.start();
+// Si erreur système
+recog.onerror = () => {
+  statusEl.textContent = '⚠️ Problème de reconnaissance.';
+  recog.start();
+};
+
+// On lance immédiatement l’écoute continue
+window.addEventListener('load', () => {
+  recog.start();
+});
