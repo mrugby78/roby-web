@@ -2,6 +2,7 @@
   "name": "roby-web",
   "version": "1.0.0",
   "dependencies": {
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^3.3.1",
+    "openai": "^4.4.0"
   }
 }
