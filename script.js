@@ -1,69 +1,57 @@
 // script.js
 
-// PLACEHOLDER_KEY sera remplacé automatiquement par GitHub Actions plus tard
-const OPENAI_API_KEY = 'const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-';
+// La clé sera injectée par ton hôte (Netlify) dans __OPENAI_API_KEY__
+const OPENAI_API_KEY = '__OPENAI_API_KEY__';
 
-const statusEl = document.getElementById('status');
+const statusEl   = document.getElementById('status');
+const resultEl   = document.getElementById('result');
 
-// Initialisation du SpeechRecognition
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-recognition.lang = 'fr-FR';
+const recognition        = new SpeechRecognition();
+recognition.lang         = 'fr-FR';
 recognition.interimResults = false;
-recognition.continuous = false;
+recognition.continuous    = false;
 
-// Initialisation du Text-to-Speech
 const synth = window.speechSynthesis;
 
-// Quand la reconnaissance démarre
 recognition.onstart = () => {
-  statusEl.textContent = '🎙️ J’écoute…';
+  statusEl.textContent = '🟢 J’écoute…';
 };
-
-// À la fin de la reconnaissance
 recognition.onend = () => {
   statusEl.textContent = '🤖 Roby parle…';
 };
 
-// Quand on obtient le texte reconnu
 recognition.onresult = async (event) => {
   const userText = event.results[0][0].transcript;
+  resultEl.textContent = `🟡 Tu as dit : « ${userText} »`;
+
   try {
-    // Appel à OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
         messages: [
-          { role: 'system', content: `Tu es Roby, un robot ami des enfants.` },
+          { role: 'system', content: 'Tu es Roby, un robot ami des enfants.' },
           { role: 'user', content: userText }
         ]
       })
     });
-    const data = await response.json();
+    const data = await resp.json();
     const botReply = data.choices[0].message.content.trim();
 
-    // Parler la réponse
-    const utterance = new SpeechSynthesisUtterance(botReply);
-    utterance.lang = 'fr-FR';
-    utterance.onend = () => {
-      // Relancer la reconnaissance après le TTS
-      recognition.start();
-    };
-    synth.speak(utterance);
+    const utter = new SpeechSynthesisUtterance(botReply);
+    utter.lang = 'fr-FR';
+    utter.onend = () => recognition.start();
+    synth.speak(utter);
 
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     statusEl.textContent = '❌ Erreur de communication.';
   }
 };
 
-// Lance la première écoute au chargement de la page
-window.onload = () => {
-  recognition.start();
-};
+window.onload = () => recognition.start();
