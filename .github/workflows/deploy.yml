@@ -1,0 +1,25 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Inject OpenAI key
+        run: |
+          sed -i "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|g" script.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4
+        with:
+          folder: ./
