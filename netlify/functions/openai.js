@@ -3,10 +3,12 @@ const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
   try {
-    const body = JSON.parse(event.body || '{}');
-    const userMessage = body.userMessage;
+    const { userMessage } = JSON.parse(event.body || '{}');
     if (!userMessage) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'No userMessage provided' }) };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'No userMessage provided' })
+      };
     }
 
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -16,7 +18,7 @@ exports.handler = async (event, context) => {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',      // ← **Ajout du modèle**
+        model: 'gpt-3.5-turbo',
         messages: [
           { role: 'system', content: 'Tu es Roby, un robot ami des enfants.' },
           { role: 'user',   content: userMessage }
@@ -29,10 +31,9 @@ exports.handler = async (event, context) => {
       return { statusCode: res.status, body: JSON.stringify(data) };
     }
 
-    const reply = data.choices[0].message.content.trim();
     return {
       statusCode: 200,
-      body: JSON.stringify({ reply })
+      body: JSON.stringify({ reply: data.choices[0].message.content.trim() })
     };
 
   } catch (err) {
