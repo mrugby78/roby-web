@@ -2,49 +2,62 @@
 
 const statusEl     = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
+const historyEl    = document.getElementById('history');
 
-// Configuration de la reconnaissance vocale
+// reconnaissance vocale
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recog     = new SpeechRec();
 recog.lang      = 'fr-FR';
 recog.interimResults = false;
 recog.continuous      = true;
 
-// Quand la reconnaissance démarre
+// synthèse vocale
+const synth = window.speechSynthesis;
+
+// historique des échanges
+function addHistory(who, text) {
+  const div = document.createElement('div');
+  div.className = 'entry ' + who;
+  div.textContent = (who === 'user' ? '🟡 Vous : ' : '🟢 Roby : ') + text;
+  historyEl.append(div);
+  historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+// au démarrage
 recog.onstart = () => {
   statusEl.textContent = '🟢 Roby écoute…';
 };
 
-// Quand on a un résultat
+// quand on a le résultat
 recog.onresult = async (event) => {
   const userText = event.results[0][0].transcript.trim();
   transcriptEl.textContent = `🟡 Tu as dit : « ${userText} »`;
+  addHistory('user', userText);
 
   try {
-    const response = await fetch('/.netlify/functions/openai', {
+    // appel à la Function Netlify
+    const res = await fetch('/.netlify/functions/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userMessage: userText })   // ← clé userMessage
+      body: JSON.stringify({ userMessage: userText })
     });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erreur serveur');
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Erreur inconnue');
-    }
+    const botReply = json.botReply.trim();
+    addHistory('bot', botReply);
 
-    // on lit la réponse
-    const utter = new SpeechSynthesisUtterance(data.reply);
+    // parler la réponse
+    const utter = new SpeechSynthesisUtterance(botReply);
     utter.lang = 'fr-FR';
-    utter.onend = () => recog.start();  // relance l’écoute à la fin
-    speechSynthesis.speak(utter);
+    utter.onend = () => recog.start();
+    synth.speak(utter);
 
   } catch (err) {
-    statusEl.textContent = '❌ Erreur de communication.';
     console.error(err);
+    statusEl.textContent = '❌ Erreur de communication.';
   }
 };
 
-// Démarrage automatique au chargement
-window.onload = () => {
-  recog.start();
-};
+// lancer la reconnaissance en continu
+recog.start();
