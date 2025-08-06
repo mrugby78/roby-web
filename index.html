@@ -5,28 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>🤖 Roby, le Robot Curieux</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2rem;
-      background: #f0f8ff;
-    }
-    #status {
-      margin-top: 1rem;
-      font-size: 1.2rem;
-      color: gray;
-    }
-    #transcript {
-      margin-top: 1rem;
-      font-size: 1.1rem;
-      color: #333;
-    }
+    body { font-family: sans-serif; padding: 2rem; background: #f0f8ff; text-align: center; }
+    #status { margin-top: 1rem; font-size: 1.2rem; color: gray; }
+    #transcript, #history { margin-top: 1rem; font-size: 1.1rem; }
+    #history { text-align: left; max-width: 600px; margin: 1rem auto; background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .entry { margin-bottom: 0.5rem; }
+    .user   { color: #0066cc; }
+    .bot    { color: #009933; }
   </style>
 </head>
 <body>
   <h1>🤖 Roby, le Robot Curieux</h1>
-  <p id="status">🔴 Initialisation…</p>
-  <p id="transcript"></p>
+  <p id="status">🟢 Roby écoute…</p>
+  <p id="transcript">🟡 Tu as dit : « … »</p>
+  <div id="history"></div>
   <script src="script.js"></script>
 </body>
 </html>
