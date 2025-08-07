@@ -1,85 +1,82 @@
-// script.js
+// ==== script.js ====
 
-// Récupère les éléments
-const statusEl     = document.getElementById('status');
-const transcriptEl = document.getElementById('transcript');
-const startBtn     = document.getElementById('startBtn');
+// 1. Sélection des éléments du DOM
+const startBtn  = document.getElementById('startBtn');
+const statusEl  = document.getElementById('status');
+const talkbox   = document.getElementById('talkbox');
 
-// Prépare la reconnaissance vocale
+// 2. Initialisation de la reconnaissance vocale
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recog     = new SpeechRec();
-recog.lang      = 'fr-FR';
-recog.interimResults = false;
-recog.continuous      = true;
+if (!SpeechRec) {
+  statusEl.textContent = '❌ SpeechRecognition non supporté par ton navigateur.';
+  startBtn.disabled = true;
+} else {
+  const recog = new SpeechRec();
+  recog.lang            = 'fr-FR';
+  recog.interimResults   = false;
+  recog.continuous       = true;
 
-// Prépare la synthèse vocale
-const synth = window.speechSynthesis;
-
-// Gestion du clic “Démarrer / Arrêter”  
-let listening = false;
-startBtn.addEventListener('click', () => {
-  if (!listening) {
-    recog.start();                          // <-- événement utilisateur
-    startBtn.textContent = '⏸️ Arrêter Roby';
+  // 3. Quand la reconnaissance démarre / s’arrête
+  recog.onstart = () => {
     statusEl.textContent = '🟢 Roby écoute…';
-    listening = true;
-  } else {
-    recog.stop();
-    startBtn.textContent = '▶️ Démarrer Roby';
+  };
+  recog.onend = () => {
     statusEl.textContent = '🔴 Roby en pause.';
-    listening = false;
-  }
-});
+  };
+  recog.onerror = (e) => {
+    console.error('SpeechRec error', e);
+  };
 
-// Quand on capte du texte
-recog.onresult = async (event) => {
-  const userText = event.results[0][0].transcript.trim();
-  transcriptEl.textContent = `🟡 Tu as dit : « ${userText} »`;
+  // 4. Quand un résultat est prêt
+  recog.onresult = async (event) => {
+    const userText = event.results[event.results.length - 1][0].transcript.trim();
 
-  // Reconnais “stop roby”
-  if (/stop roby/i.test(userText)) {
-    recog.stop();
-    startBtn.textContent = '▶️ Démarrer Roby';
-    statusEl.textContent = '🔴 Roby en pause.';
-    listening = false;
-    return;
-  }
+    // Affiche ce que dit l’utilisateur
+    const pUser = document.createElement('p');
+    pUser.innerHTML = `<span>🟡 Vous :</span> ${userText}`;
+    talkbox.appendChild(pUser);
 
-  try {
-    // Appel à la Function
-    const res = await fetch('/.netlify/functions/openai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userMessage: userText })
-    });
-    const { text, error } = await res.json();
-    if (error) throw new Error(error);
+    try {
+      // Appel à ta Function Netlify
+      const response = await fetch('/.netlify/functions/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMessage: userText })
+      });
+      const data = await response.json();
+      // Récupère la réponse ou l’erreur
+      const reply = data.choices?.[0]?.message?.content
+                  || data.error
+                  || '❌ Pas de réponse.';
 
-    // Affiche la réponse écrite
-    const botLine = document.createElement('div');
-    botLine.textContent = `🟢 Roby : ${text}`;
-    document.body.append(botLine);
+      // Affiche la réponse
+      const pBot = document.createElement('p');
+      pBot.innerHTML = `<span>🟢 Roby :</span> ${reply}`;
+      talkbox.appendChild(pBot);
 
-    // Parole enfantine
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang  = 'fr-FR';
-    utter.pitch = 1.5;
-    utter.rate  = 1.2;
-    synth.speak(utter);
+      // 5. Lecture vocale
+      const utter = new SpeechSynthesisUtterance(reply);
+      utter.lang  = 'fr-FR';
+      utter.pitch = 1.5;   // plus aigu
+      utter.rate  = 1.2;   // un peu plus rapide
+      window.speechSynthesis.speak(utter);
 
-    // À la fin de la voix, on relance la reco si on est toujours en “listening”
-    utter.onend = () => {
-      if (listening) {
-        recog.start();
-        statusEl.textContent = '🟢 Roby écoute…';
-      }
-    };
-  } catch (err) {
-    console.error(err);
-    statusEl.textContent = '❌ Erreur de communication.';
-  }
-};
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-recog.onerror = () => {
-  statusEl.textContent = '🔴 Problème microphone.';
-};
+  // 6. Gestion du bouton Démarrer / Arrêter
+  let listening = false;
+  startBtn.addEventListener('click', () => {
+    if (!listening) {
+      recog.start();
+      listening = true;
+      startBtn.textContent = '⏸️ Arrêter Roby';
+    } else {
+      recog.stop();
+      listening = false;
+      startBtn.textContent = '▶️ Démarrer Roby';
+    }
+  });
+}
