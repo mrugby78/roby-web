@@ -1,72 +1,74 @@
 // ==== script.js ====
 
-// 1. Sélection des éléments du DOM
+// 1 – Sélection des éléments
 const startBtn  = document.getElementById('startBtn');
 const statusEl  = document.getElementById('status');
 const talkbox   = document.getElementById('talkbox');
 
-// 2. Initialisation de la reconnaissance vocale
+// 2 – Initialisation SpeechRecognition
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRec) {
-  statusEl.textContent = '❌ SpeechRecognition non supporté par ton navigateur.';
+  statusEl.textContent = '❌ Reconnaissance vocale non supportée';
   startBtn.disabled = true;
 } else {
   const recog = new SpeechRec();
-  recog.lang            = 'fr-FR';
-  recog.interimResults   = false;
-  recog.continuous       = true;
+  recog.lang          = 'fr-FR';
+  recog.continuous    = true;
+  recog.interimResults = false;
 
-  // 3. Quand la reconnaissance démarre / s’arrête
-  recog.onstart = () => {
-    statusEl.textContent = '🟢 Roby écoute…';
-  };
-  recog.onend = () => {
-    statusEl.textContent = '🔴 Roby en pause.';
-  };
-  recog.onerror = (e) => {
-    console.error('SpeechRec error', e);
-  };
+  // 3 – Démarrage / arrêt de l’écoute
+  recog.onstart = () => statusEl.textContent = '🟢 Roby écoute…';
+  recog.onend   = () => statusEl.textContent = '🔴 Roby en pause.';
+  recog.onerror = e => console.error('SpeechRec error:', e);
 
-  // 4. Quand un résultat est prêt
+  // 4 – Quand on reçoit du texte
   recog.onresult = async (event) => {
-    const userText = event.results[event.results.length - 1][0].transcript.trim();
+    // Récupère la dernière phrase
+    const last = event.results[event.results.length - 1][0].transcript.trim();
 
-    // Affiche ce que dit l’utilisateur
-    const pUser = document.createElement('p');
-    pUser.innerHTML = `<span>🟡 Vous :</span> ${userText}`;
-    talkbox.appendChild(pUser);
+    // Affiche l’utilisateur
+    const pYou = document.createElement('p');
+    pYou.innerHTML = `<span>🟡 Vous :</span> ${last}`;
+    talkbox.appendChild(pYou);
 
+    // Si l’utilisateur dit “stop roby”, on arrête tout
+    if (last.toLowerCase().includes('stop roby')) {
+      recog.stop();
+      startBtn.textContent = '▶️ Démarrer Roby';
+      return;
+    }
+
+    // 5 – Appel à la Function Netlify
+    let reply = '❌ Pas de réponse.';
     try {
-      // Appel à ta Function Netlify
-      const response = await fetch('/.netlify/functions/openai', {
+      const res = await fetch('/.netlify/functions/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage: userText })
+        body: JSON.stringify({ userMessage: last })
       });
-      const data = await response.json();
-      // Récupère la réponse ou l’erreur
-      const reply = data.choices?.[0]?.message?.content
-                  || data.error
-                  || '❌ Pas de réponse.';
-
-      // Affiche la réponse
-      const pBot = document.createElement('p');
-      pBot.innerHTML = `<span>🟢 Roby :</span> ${reply}`;
-      talkbox.appendChild(pBot);
-
-      // 5. Lecture vocale
-      const utter = new SpeechSynthesisUtterance(reply);
-      utter.lang  = 'fr-FR';
-      utter.pitch = 1.5;   // plus aigu
-      utter.rate  = 1.2;   // un peu plus rapide
-      window.speechSynthesis.speak(utter);
-
-    } catch (err) {
-      console.error(err);
+      const payload = await res.json();
+      // Extrait la réponse
+      reply = payload.choices?.[0]?.message?.content?.trim() 
+            || payload.error 
+            || reply;
+    } catch(err) {
+      console.error('Fetch error:', err);
     }
+
+    // Affiche Roby
+    const pBot = document.createElement('p');
+    pBot.innerHTML = `<span>🟢 Roby :</span> ${reply}`;
+    talkbox.appendChild(pBot);
+
+    // 6 – Lecture vocale
+    const utter = new SpeechSynthesisUtterance(reply);
+    utter.lang  = 'fr-FR';
+    utter.pitch = 2.0;   // très enfantin
+    utter.rate  = 1.3;   // un peu plus rapide
+    window.speechSynthesis.speak(utter);
   };
 
-  // 6. Gestion du bouton Démarrer / Arrêter
+  // 7 – Bouton start/stop
   let listening = false;
   startBtn.addEventListener('click', () => {
     if (!listening) {
