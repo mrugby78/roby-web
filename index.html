@@ -1,49 +1,20 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>🤖 Roby, le Robot Curieux</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2rem;
-      background: #f0f8ff;
-    }
-    #status {
-      margin-top: 1rem;
-      font-size: 1.2rem;
-      color: gray;
-    }
-    #transcript, #response {
-      display: block;
-      margin: 1rem auto;
-      max-width: 600px;
-      text-align: left;
-      white-space: pre-wrap;
-      padding: 1rem;
-      border-radius: 8px;
-      background: #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    #transcript { color: #444; }
-    #response   { color: #0a0; }
-    button {
-      font-size: 1rem;
-      padding: .5rem 1rem;
-      margin-top: 1rem;
-      cursor: pointer;
-    }
+    body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f0f8ff; }
+    #status { margin-top: 1rem; font-size: 1.2rem; color: gray; }
+    #talkbox { margin-top: 2rem; padding: 1rem; border-radius: 8px; background: white; max-width: 600px; margin-left: auto; margin-right: auto; text-align: left; }
+    #talkbox p { margin: 0.5em 0; }
   </style>
 </head>
 <body>
   <h1>🤖 Roby, le Robot Curieux</h1>
-  <div id="status">🔴 Roby en pause.</div>
-  <button id="btnStart">▶️ Démarrer Roby</button>
-  <div id="transcript"></div>
-  <div id="response"></div>
-
+  <div id="status">🟢 Roby écoute…</div>
+  <div id="talkbox"></div>
   <script src="script.js"></script>
 </body>
 </html>

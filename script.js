@@ -1,63 +1,77 @@
 // script.js
 
-// DOM
-const statusEl     = document.getElementById('status');
-const transcriptEl = document.getElementById('transcript');
-const responseEl   = document.getElementById('response');
-const btnStart     = document.getElementById('btnStart');
+// Éléments UI
+const statusEl = document.getElementById('status');
+const talkbox  = document.getElementById('talkbox');
 
-// SpeechRecognition setup
+// Reconnaissance vocale
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recog     = new SpeechRec();
-recog.lang           = 'fr-FR';
+recog.lang      = 'fr-FR';
 recog.interimResults = false;
-recog.continuous     = true;
+recog.continuous      = true;
 
-// Quand on clique pour démarrer
-btnStart.addEventListener('click', () => {
-  // 1) on démarre la reco
-  recog.start();
-  // 2) on retire le bouton (plus besoin)
-  btnStart.style.display = 'none';
-});
+// Synthèse vocale
+const synth = window.speechSynthesis;
 
-// Reconnaissance démarrée
+// Démarrage auto de l'écoute
+recog.start();
+
+// Quand on commence à écouter
 recog.onstart = () => {
   statusEl.textContent = '🟢 Roby écoute…';
 };
 
-// Quand on a un résultat
+// À chaque résultat
 recog.onresult = async (event) => {
-  const userText = event.results[event.results.length - 1][0].transcript.trim();
-  transcriptEl.textContent = `🟡 Vous : ${userText}`;
+  const userText = event.results[0][0].transcript.trim();
+  appendMessage('Vous', userText, '🟡');
 
   try {
-    // Appel Function
-    const res = await fetch('/.netlify/functions/openai', {
+    const resp = await fetch('/.netlify/functions/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userMessage: userText })
     });
-    const { botReply, error } = await res.json();
-    if (!res.ok || error) throw new Error(error || 'Erreur API');
+    const data = await resp.json();
+    console.log('🔍 API response raw:', data);
 
-    // Affiche
-    responseEl.textContent = `🟢 Roby : ${botReply}`;
+    let botReply;
+    if (data.text) {
+      botReply = data.text;
+    } else {
+      botReply = JSON.stringify(data);
+    }
+    console.log('🔍 botReply chosen:', botReply);
 
-    // Synthèse vocale
-    const utter = new SpeechSynthesisUtterance(botReply);
-    utter.lang = 'fr-FR';
-    utter.rate = 0.9;
-    utter.pitch = 1.3;
-    speechSynthesis.speak(utter);
+    appendMessage('Roby', botReply, '🟢');
+    speak(botReply);
+
+    // redémarrer écoute
+    recog.start();
 
   } catch (err) {
-    responseEl.textContent = '❌ Erreur de communication.';
     console.error(err);
+    statusEl.textContent = '❌ Erreur de communication.';
   }
 };
 
-// Quand la voix se termine, on repart en écoute
-speechSynthesis.onend = () => {
-  recog.start();
-};
+// helper pour afficher
+function appendMessage(speaker, text, emoji) {
+  const p = document.createElement('p');
+  p.innerHTML = `<strong>${emoji} ${speaker} :</strong> ${text}`;
+  talkbox.appendChild(p);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+// helper pour parler
+function speak(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'fr-FR';
+  utter.rate = 1.1;       // un chouïa plus rapide
+  utter.pitch = 1.5;      // voix plus aiguë
+  utter.onend = () => {
+    // rien à faire
+  };
+  synth.speak(utter);
+}
