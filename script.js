@@ -1,9 +1,10 @@
 // script.js
 
-const statusEl     = document.getElementById("status");
-const talkbox      = document.getElementById("talkbox");
-const SpeechRec    = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recog        = new SpeechRec();
+const statusEl = document.getElementById("status");
+const talkbox  = document.getElementById("talkbox");
+
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recog     = new SpeechRec();
 recog.lang         = "fr-FR";
 recog.interimResults = false;
 recog.continuous     = true;
@@ -14,11 +15,11 @@ const STOP_PHRASE = "stop roby";
 recog.onstart = () => statusEl.textContent = "🟢 Roby écoute…";
 recog.onend   = () => statusEl.textContent = "🔴 Roby en pause.";
 
-recog.onresult = async (event) => {
-  const userText = event.results[0][0].transcript.trim().toLowerCase();
-  appendLine("Vous", userText);
+recog.onresult = async (e) => {
+  const text = e.results[0][0].transcript.trim().toLowerCase();
+  append("Vous", text);
 
-  if (userText.includes(STOP_PHRASE)) {
+  if (text.includes(STOP_PHRASE)) {
     recog.stop();
     return;
   }
@@ -27,34 +28,33 @@ recog.onresult = async (event) => {
     const res = await fetch("/.netlify/functions/openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: userText })
+      body: JSON.stringify({ message: text })
     });
     const { reply, error } = await res.json();
     if (error) throw new Error(error);
-    appendLine("Roby", reply);
+    append("Roby", reply);
     speak(reply);
   } catch (err) {
-    appendLine("Roby", `❌ ${err.message}`);
+    append("Roby", `❌ ${err.message}`);
   }
 };
 
-function appendLine(who, text) {
+function append(who, txt) {
   const p = document.createElement("p");
-  const color = who === "Roby" ? "green" : "goldenrod";
-  p.innerHTML = `<span style="color:${color}">● ${who} :</span> ${text}`;
+  p.innerHTML = `<span style="color:${who==="Roby"?"green":"goldenrod"}">● ${who} :</span> ${txt}`;
   talkbox.append(p);
   talkbox.scrollTop = talkbox.scrollHeight;
 }
 
-function speak(text) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "fr-FR";
-  u.rate = 1.1;
+function speak(txt) {
+  const u = new SpeechSynthesisUtterance(txt);
+  u.lang  = "fr-FR";
+  u.rate  = 1.1;
   u.pitch = 1.3;
   speechSynthesis.speak(u);
 }
 
-// Bouton Start / Stop
+// Bouton unique Démarrer / Arrêter
 const btn = document.createElement("button");
 btn.textContent = "▶️ Démarrer Roby";
 btn.style = "margin:1rem;padding:0.5rem 1rem;font-size:1rem;";
