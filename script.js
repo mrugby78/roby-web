@@ -1,54 +1,62 @@
 // script.js
 
-// Éléments UI
-const statusEl = document.getElementById('status');
-const talkbox  = document.getElementById('talkbox');
+// Récupère les éléments du DOM
+const statusEl     = document.getElementById('status');
+const transcriptEl = document.getElementById('transcript');
 
-// Reconnaissance vocale
+// Prépare la reconnaissance vocale
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recog     = new SpeechRec();
 recog.lang      = 'fr-FR';
 recog.interimResults = false;
 recog.continuous      = true;
 
-// Synthèse vocale
+// Prépare la synthèse vocale
 const synth = window.speechSynthesis;
 
-// Démarrage auto de l'écoute
+// Démarrage auto quand on charge la page
 recog.start();
+statusEl.textContent = '🟢 Roby écoute…';
 
-// Quand on commence à écouter
-recog.onstart = () => {
-  statusEl.textContent = '🟢 Roby écoute…';
-};
-
-// À chaque résultat
+// Si on reconnait quelque chose
 recog.onresult = async (event) => {
   const userText = event.results[0][0].transcript.trim();
-  appendMessage('Vous', userText, '🟡');
+  transcriptEl.textContent = `🟡 Tu as dit : « ${userText} »`;
 
+  // Si l’utilisateur dit “stop roby”, on coupe tout
+  if (/stop roby/i.test(userText)) {
+    recog.stop();
+    statusEl.textContent = '🔴 Roby en pause.';
+    return;
+  }
+
+  // Appel à notre Netlify Function
   try {
-    const resp = await fetch('/.netlify/functions/openai', {
+    const res = await fetch('/.netlify/functions/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userMessage: userText })
     });
-    const data = await resp.json();
-    console.log('🔍 API response raw:', data);
+    const { text, error } = await res.json();
+    if (error) throw new Error(error);
 
-    let botReply;
-    if (data.text) {
-      botReply = data.text;
-    } else {
-      botReply = JSON.stringify(data);
-    }
-    console.log('🔍 botReply chosen:', botReply);
+    // Affiche la réponse
+    const botLine = document.createElement('div');
+    botLine.textContent = `🟢 Roby : ${text}`;
+    document.body.append(botLine);
 
-    appendMessage('Roby', botReply, '🟢');
-    speak(botReply);
+    // Prépare l’énoncé vocal
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang  = 'fr-FR';
+    utter.pitch = 1.5;    // plus aigu
+    utter.rate  = 1.2;    // un peu plus rapide
+    synth.speak(utter);
 
-    // redémarrer écoute
-    recog.start();
+    // Quand la parole est terminée, on redémarre l’écoute
+    utter.onend = () => {
+      recog.start();
+      statusEl.textContent = '🟢 Roby écoute…';
+    };
 
   } catch (err) {
     console.error(err);
@@ -56,22 +64,7 @@ recog.onresult = async (event) => {
   }
 };
 
-// helper pour afficher
-function appendMessage(speaker, text, emoji) {
-  const p = document.createElement('p');
-  p.innerHTML = `<strong>${emoji} ${speaker} :</strong> ${text}`;
-  talkbox.appendChild(p);
-  window.scrollTo(0, document.body.scrollHeight);
-}
-
-// helper pour parler
-function speak(text) {
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'fr-FR';
-  utter.rate = 1.1;       // un chouïa plus rapide
-  utter.pitch = 1.5;      // voix plus aiguë
-  utter.onend = () => {
-    // rien à faire
-  };
-  synth.speak(utter);
-}
+// Si la reconnaissance s’arrête (erreur ou pause), on l’affiche
+recog.onerror = () => {
+  statusEl.textContent = '🔴 Problème microphone.';
+};
