@@ -1,84 +1,71 @@
-// ==== script.js ====
+// script.js
 
-// 1 – Sélection des éléments
-const startBtn  = document.getElementById('startBtn');
-const statusEl  = document.getElementById('status');
-const talkbox   = document.getElementById('talkbox');
+const statusEl     = document.getElementById("status");
+const talkbox      = document.getElementById("talkbox");
+const SpeechRec    = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recog        = new SpeechRec();
+recog.lang         = "fr-FR";
+recog.interimResults = false;
+recog.continuous     = true;
 
-// 2 – Initialisation SpeechRecognition
-const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRec) {
-  statusEl.textContent = '❌ Reconnaissance vocale non supportée';
-  startBtn.disabled = true;
-} else {
-  const recog = new SpeechRec();
-  recog.lang          = 'fr-FR';
-  recog.continuous    = true;
-  recog.interimResults = false;
+let listening = false;
+const STOP_PHRASE = "stop roby";
 
-  // 3 – Démarrage / arrêt de l’écoute
-  recog.onstart = () => statusEl.textContent = '🟢 Roby écoute…';
-  recog.onend   = () => statusEl.textContent = '🔴 Roby en pause.';
-  recog.onerror = e => console.error('SpeechRec error:', e);
+recog.onstart = () => statusEl.textContent = "🟢 Roby écoute…";
+recog.onend   = () => statusEl.textContent = "🔴 Roby en pause.";
 
-  // 4 – Quand on reçoit du texte
-  recog.onresult = async (event) => {
-    // Récupère la dernière phrase
-    const last = event.results[event.results.length - 1][0].transcript.trim();
+recog.onresult = async (event) => {
+  const userText = event.results[0][0].transcript.trim().toLowerCase();
+  appendLine("Vous", userText);
 
-    // Affiche l’utilisateur
-    const pYou = document.createElement('p');
-    pYou.innerHTML = `<span>🟡 Vous :</span> ${last}`;
-    talkbox.appendChild(pYou);
+  if (userText.includes(STOP_PHRASE)) {
+    recog.stop();
+    return;
+  }
 
-    // Si l’utilisateur dit “stop roby”, on arrête tout
-    if (last.toLowerCase().includes('stop roby')) {
-      recog.stop();
-      startBtn.textContent = '▶️ Démarrer Roby';
-      return;
-    }
+  try {
+    const res = await fetch("/.netlify/functions/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: userText })
+    });
+    const { reply, error } = await res.json();
+    if (error) throw new Error(error);
+    appendLine("Roby", reply);
+    speak(reply);
+  } catch (err) {
+    appendLine("Roby", `❌ ${err.message}`);
+  }
+};
 
-    // 5 – Appel à la Function Netlify
-    let reply = '❌ Pas de réponse.';
-    try {
-      const res = await fetch('/.netlify/functions/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage: last })
-      });
-      const payload = await res.json();
-      // Extrait la réponse
-      reply = payload.choices?.[0]?.message?.content?.trim() 
-            || payload.error 
-            || reply;
-    } catch(err) {
-      console.error('Fetch error:', err);
-    }
-
-    // Affiche Roby
-    const pBot = document.createElement('p');
-    pBot.innerHTML = `<span>🟢 Roby :</span> ${reply}`;
-    talkbox.appendChild(pBot);
-
-    // 6 – Lecture vocale
-    const utter = new SpeechSynthesisUtterance(reply);
-    utter.lang  = 'fr-FR';
-    utter.pitch = 2.0;   // très enfantin
-    utter.rate  = 1.3;   // un peu plus rapide
-    window.speechSynthesis.speak(utter);
-  };
-
-  // 7 – Bouton start/stop
-  let listening = false;
-  startBtn.addEventListener('click', () => {
-    if (!listening) {
-      recog.start();
-      listening = true;
-      startBtn.textContent = '⏸️ Arrêter Roby';
-    } else {
-      recog.stop();
-      listening = false;
-      startBtn.textContent = '▶️ Démarrer Roby';
-    }
-  });
+function appendLine(who, text) {
+  const p = document.createElement("p");
+  const color = who === "Roby" ? "green" : "goldenrod";
+  p.innerHTML = `<span style="color:${color}">● ${who} :</span> ${text}`;
+  talkbox.append(p);
+  talkbox.scrollTop = talkbox.scrollHeight;
 }
+
+function speak(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "fr-FR";
+  u.rate = 1.1;
+  u.pitch = 1.3;
+  speechSynthesis.speak(u);
+}
+
+// Bouton Start / Stop
+const btn = document.createElement("button");
+btn.textContent = "▶️ Démarrer Roby";
+btn.style = "margin:1rem;padding:0.5rem 1rem;font-size:1rem;";
+btn.onclick = () => {
+  if (!listening) {
+    recog.start();
+    btn.textContent = "⏸️ Arrêter Roby";
+  } else {
+    recog.stop();
+    btn.textContent = "▶️ Démarrer Roby";
+  }
+  listening = !listening;
+};
+document.body.insertBefore(btn, statusEl);
