@@ -1,63 +1,41 @@
-// netlify/functions/openai.js
+import { Configuration, OpenAIApi } from "openai";
 
-exports.handler = async function(event, context) {
+export async function handler(event) {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: JSON.stringify({ error: "Method Not Allowed" }) };
+  }
+
+  let body;
   try {
-    const { userMessage } = JSON.parse(event.body || '{}');
-    if (!userMessage) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'No userMessage provided' })
-      };
-    }
+    body = JSON.parse(event.body);
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
+  }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Missing OpenAI API key' })
-      };
-    }
+  const userMessage = body.message;
+  if (!userMessage) {
+    return { statusCode: 400, body: JSON.stringify({ error: "No userMessage provided" }) };
+  }
 
-    // Appel direct à l’API OpenAI
-    const resp = await fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: 'Tu es Roby, un robot enfantin et curieux.' },
-            { role: 'user',   content: userMessage }
-          ],
-          max_tokens: 200,
-          temperature: 0.8
-        })
-      }
-    );
+  const configuration = new Configuration({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  const openai = new OpenAIApi(configuration);
 
-    const data = await resp.json();
-    if (data.error) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: data.error.message || data.error })
-      };
-    }
-
-    const text = data.choices[0].message.content;
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ text })
-    };
-
+  try {
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "Tu es Roby, un robot curieux et bienveillant." },
+        { role: "user",   content: userMessage }
+      ],
+      max_tokens: 150,
+      temperature: 0.7
+    });
+    const reply = completion.data.choices[0].message.content;
+    return { statusCode: 200, body: JSON.stringify({ reply }) };
   } catch (err) {
     console.error(err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
-};
+}
