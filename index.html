@@ -5,16 +5,58 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>🤖 Roby, le Robot Curieux</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f0f8ff; }
-    #status { margin-top: 1rem; font-size: 1.2rem; color: gray; }
-    #talkbox { margin-top: 2rem; padding: 1rem; border-radius: 8px; background: white; max-width: 600px; margin-left: auto; margin-right: auto; text-align: left; }
-    #talkbox p { margin: 0.5em 0; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: #f0f8ff;
+    }
+    #startBtn {
+      font-size: 1.2rem;
+      padding: 0.5em 1em;
+      border: none;
+      border-radius: 6px;
+      background: #007acc;
+      color: white;
+      cursor: pointer;
+    }
+    #startBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #status {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: gray;
+    }
+    #talkbox {
+      margin-top: 2rem;
+      padding: 1rem;
+      border-radius: 8px;
+      background: white;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    #talkbox p {
+      margin: 0.5em 0;
+    }
   </style>
 </head>
 <body>
   <h1>🤖 Roby, le Robot Curieux</h1>
-  <div id="status">🟢 Roby écoute…</div>
+
+  <!-- 1. Bouton Démarrer / Arrêter -->
+  <button id="startBtn">▶️ Démarrer Roby</button>
+
+  <!-- 2. Statut d'écoute -->
+  <div id="status">🔴 Roby en pause.</div>
+
+  <!-- 3. Zone de discussion écrite -->
   <div id="talkbox"></div>
+
+  <!-- 4. Ton script principal -->
   <script src="script.js"></script>
 </body>
 </html>
