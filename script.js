@@ -1,30 +1,38 @@
 // script.js
 
-// Éléments du DOM
+// DOM
 const statusEl     = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
 const responseEl   = document.getElementById('response');
+const btnStart     = document.getElementById('btnStart');
 
-// Initialisation SpeechRecognition
+// SpeechRecognition setup
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recog     = new SpeechRec();
 recog.lang           = 'fr-FR';
 recog.interimResults = false;
 recog.continuous     = true;
 
-// Quand la reconnaissance démarre
+// Quand on clique pour démarrer
+btnStart.addEventListener('click', () => {
+  // 1) on démarre la reco
+  recog.start();
+  // 2) on retire le bouton (plus besoin)
+  btnStart.style.display = 'none';
+});
+
+// Reconnaissance démarrée
 recog.onstart = () => {
   statusEl.textContent = '🟢 Roby écoute…';
 };
 
 // Quand on a un résultat
 recog.onresult = async (event) => {
-  // 1. Extraire le texte
   const userText = event.results[event.results.length - 1][0].transcript.trim();
   transcriptEl.textContent = `🟡 Vous : ${userText}`;
 
   try {
-    // 2. Appel à la Function Netlify
+    // Appel Function
     const res = await fetch('/.netlify/functions/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,14 +41,14 @@ recog.onresult = async (event) => {
     const { botReply, error } = await res.json();
     if (!res.ok || error) throw new Error(error || 'Erreur API');
 
-    // 3. Afficher la réponse écrite
+    // Affiche
     responseEl.textContent = `🟢 Roby : ${botReply}`;
 
-    // 4. Synthèse vocale
+    // Synthèse vocale
     const utter = new SpeechSynthesisUtterance(botReply);
     utter.lang = 'fr-FR';
-    utter.rate = 0.9;      // un peu plus lent
-    utter.pitch = 1.3;     // voix plus enfantine
+    utter.rate = 0.9;
+    utter.pitch = 1.3;
     speechSynthesis.speak(utter);
 
   } catch (err) {
@@ -49,12 +57,7 @@ recog.onresult = async (event) => {
   }
 };
 
-// Quand la synthèse se termine, on relance l’écoute
+// Quand la voix se termine, on repart en écoute
 speechSynthesis.onend = () => {
-  if (recog) recog.start();
-};
-
-// Démarrage automatique à l’ouverture
-window.onload = () => {
   recog.start();
 };
