@@ -1,63 +1,60 @@
 // script.js
 
+// Éléments du DOM
 const statusEl     = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
-const historyEl    = document.getElementById('history');
+const responseEl   = document.getElementById('response');
 
-// reconnaissance vocale
+// Initialisation SpeechRecognition
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recog     = new SpeechRec();
-recog.lang      = 'fr-FR';
+recog.lang           = 'fr-FR';
 recog.interimResults = false;
-recog.continuous      = true;
+recog.continuous     = true;
 
-// synthèse vocale
-const synth = window.speechSynthesis;
-
-// historique des échanges
-function addHistory(who, text) {
-  const div = document.createElement('div');
-  div.className = 'entry ' + who;
-  div.textContent = (who === 'user' ? '🟡 Vous : ' : '🟢 Roby : ') + text;
-  historyEl.append(div);
-  historyEl.scrollTop = historyEl.scrollHeight;
-}
-
-// au démarrage
+// Quand la reconnaissance démarre
 recog.onstart = () => {
   statusEl.textContent = '🟢 Roby écoute…';
 };
 
-// quand on a le résultat
+// Quand on a un résultat
 recog.onresult = async (event) => {
-  const userText = event.results[0][0].transcript.trim();
-  transcriptEl.textContent = `🟡 Tu as dit : « ${userText} »`;
-  addHistory('user', userText);
+  // 1. Extraire le texte
+  const userText = event.results[event.results.length - 1][0].transcript.trim();
+  transcriptEl.textContent = `🟡 Vous : ${userText}`;
 
   try {
-    // appel à la Function Netlify
+    // 2. Appel à la Function Netlify
     const res = await fetch('/.netlify/functions/openai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userMessage: userText })
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Erreur serveur');
+    const { botReply, error } = await res.json();
+    if (!res.ok || error) throw new Error(error || 'Erreur API');
 
-    const botReply = json.botReply.trim();
-    addHistory('bot', botReply);
+    // 3. Afficher la réponse écrite
+    responseEl.textContent = `🟢 Roby : ${botReply}`;
 
-    // parler la réponse
+    // 4. Synthèse vocale
     const utter = new SpeechSynthesisUtterance(botReply);
     utter.lang = 'fr-FR';
-    utter.onend = () => recog.start();
-    synth.speak(utter);
+    utter.rate = 0.9;      // un peu plus lent
+    utter.pitch = 1.3;     // voix plus enfantine
+    speechSynthesis.speak(utter);
 
   } catch (err) {
+    responseEl.textContent = '❌ Erreur de communication.';
     console.error(err);
-    statusEl.textContent = '❌ Erreur de communication.';
   }
 };
 
-// lancer la reconnaissance en continu
-recog.start();
+// Quand la synthèse se termine, on relance l’écoute
+speechSynthesis.onend = () => {
+  if (recog) recog.start();
+};
+
+// Démarrage automatique à l’ouverture
+window.onload = () => {
+  recog.start();
+};
