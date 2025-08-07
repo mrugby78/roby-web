@@ -2,6 +2,7 @@
   "name": "roby-web",
   "version": "1.0.0",
   "description": "🤖 Roby, le Robot Curieux",
+  "type": "module",
   "main": "index.js",
   "scripts": {},
   "dependencies": {
