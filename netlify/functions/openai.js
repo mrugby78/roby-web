@@ -1,32 +1,32 @@
+// netlify/functions/openai.js
+
 import { Configuration, OpenAIApi } from "openai";
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method Not Allowed" }) };
+    return { statusCode: 405, body: `{"error":"Method Not Allowed"}` };
   }
 
   let body;
   try {
     body = JSON.parse(event.body);
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON" }) };
+    return { statusCode: 400, body: `{"error":"Invalid JSON"}` };
   }
 
   const userMessage = body.message;
   if (!userMessage) {
-    return { statusCode: 400, body: JSON.stringify({ error: "No userMessage provided" }) };
+    return { statusCode: 400, body: `{"error":"No userMessage provided"}` };
   }
 
-  const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-  const openai = new OpenAIApi(configuration);
+  const config = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = new OpenAIApi(config);
 
   try {
     const completion = await openai.createChatCompletion({
       model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: "Tu es Roby, un robot curieux et bienveillant." },
+        { role: "system", content: "Tu es Roby, un robot curieux pour enfants." },
         { role: "user",   content: userMessage }
       ],
       max_tokens: 150,
