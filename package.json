@@ -1,8 +1,8 @@
 {
   "name": "roby-web",
   "version": "1.0.0",
-  "description": "Roby, le Robot Curieux",
-  "main": "script.js",
+  "description": "🤖 Roby, le Robot Curieux",
+  "main": "index.js",
   "scripts": {},
   "dependencies": {
     "openai": "^4.2.1"
