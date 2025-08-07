@@ -1,8 +1,8 @@
 // netlify/functions/openai.js
-const fetch = require('node-fetch');
 
 exports.handler = async function(event) {
   try {
+    // 1️⃣ parser le body
     const { userMessage } = JSON.parse(event.body || '{}');
     if (!userMessage) {
       return {
@@ -11,6 +11,7 @@ exports.handler = async function(event) {
       };
     }
 
+    // 2️⃣ récupérer la clé
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return {
@@ -19,6 +20,7 @@ exports.handler = async function(event) {
       };
     }
 
+    // 3️⃣ appel à OpenAI via le fetch natif
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -29,7 +31,7 @@ exports.handler = async function(event) {
         model: 'gpt-3.5-turbo',
         messages: [
           { role: 'system', content: 'Tu es Roby, un robot ami des enfants.' },
-          { role: 'user', content: userMessage }
+          { role: 'user',  content: userMessage }
         ]
       })
     });
@@ -38,15 +40,18 @@ exports.handler = async function(event) {
     if (!response.ok) {
       throw new Error(data.error?.message || 'OpenAI API error');
     }
-    const botReply = data.choices[0].message.content;
 
+    // 4️⃣ extraire la réponse du bot
+    const botReply = data.choices[0].message.content || '';
+
+    // 5️⃣ renvoyer un JSON simple
     return {
       statusCode: 200,
       body: JSON.stringify({ botReply })
     };
 
   } catch (err) {
-    console.error(err);
+    console.error('Function error:', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message })
